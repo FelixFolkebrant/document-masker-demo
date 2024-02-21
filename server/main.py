@@ -14,27 +14,24 @@ CORS(app)
 BASE_PROMPT = """
 Uppgift: Text Masker är ett verktyg för att dölja viss information i textdokument. Verktyget fokuserar på att arbeta med vetenskapliga artiklar och medicinska journaler. Din uppgift är att dölja delar av texten som inte är relevanta enligt specifika instruktioner, men att behålla resten av texten oförändrad.
 
-Hur det fungerar: När du identifierar ett stycke text som ska döljas, lägg till en <mask>-tagg i början av det stycket och en </mask>-tagg i slutet. Verktyget ändrar inte den övriga texten utan lägger bara till dessa taggar.
+Hur det fungerar: När du identifierar ett stycke text som ska döljas, ta bort det stycket eller ordet från texten. Verktyget ändrar inte den övriga texten utan tar endast bort ord eller stycken som inte är relevanta
 
 Vad du behöver veta:
 
     Du måste vara noggrann och respektera komplexiteten i dokumenten du arbetar med.
     Det är viktigt att hantera medicinsk information försiktigt.
-    Du kommer bara att returnera den modifierade texten, där viss information är dold med <mask>-taggar.
 
 Instruktioner från användaren: Användaren kommer att ge dig specifika instruktioner om vilken information som är relevant och ska behållas synlig. Din uppgift är att följa dessa instruktioner och dölja all annan information.
 
-Om det är oklart: Om det inte är tydligt vilken information som ska döljas, bör du följa användarens instruktioner. Om det fortfarande är oklart kan du behöva fråga om ytterligare förtydliganden för att undvika att dölja viktig information.
+Om det är oklart: Om det inte är tydligt vilken information som ska döljas, bör du följa användarens instruktioner. Om det fortfarande är oklart kan du förutsätta att inte dölja. 
 
 Exempel:
 
     Originaltext: Test Testsson har en historia av hjärtsjukdomar och diabetes. Han har också en historia av depression och ångest. Han har tagit medicinen Xanax i 5 år.
     Fråga: Har Test Testsson haft diabetes?
-    Modifierad text: Test Testsson har en historia av <mask>hjärtsjukdomar</mask> och diabetes. <mask>Han har också en historia av depression och ångest. Han har tagit medicinen Xanax i 5 år.</mask>
+    Modifierad text: Test Testsson har en historia av och diabetes. <mask>Han har också en historia av depression och ångest. Han har tagit medicinen Xanax i 5 år.</mask>
 
-Vad du ska göra: Använd användarens instruktioner för att avgöra vilken information som ska förbli synlig och vilken som ska döljas med <mask>-taggar.
-
-Användarens instruktioner är: 
+Vad du ska göra: Använd användarens instruktioner för att avgöra vilken information som ska förbli synlig och vilken som ska döljas. Den information som ska vara synlig returneras i en python lista av strings
 """
 @app.route("/upload", methods=["POST"])
 def upload_file():
