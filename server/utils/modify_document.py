@@ -56,3 +56,10 @@ def highlight(input_pdf_path, output_pdf_path, texts_to_highlight):
     # Save the modified document
     doc.save(output_pdf_path)
     doc.close()
+
+def extract_text_from_pdf(pdf_path):
+    text_content = ''  # Initialize an empty string to hold all the text
+    with fitz.open(pdf_path) as doc:  # Open the PDF
+        for page in doc:  # Iterate through each page
+            text_content += page.get_text()  # Extract text and concatenate
+    return text_content

@@ -21,13 +21,31 @@ const UploadForm: React.FC = () => {
     const formData = new FormData();
     formData.append('file', selectedFile as Blob);
     formData.append('textPrompt', textPrompt); // Add the text prompt to the form data
-    console.log(textPrompt);
     try {
-      const response_raw = await axios.post('http://localhost:8000/upload', formData);
-      setResponse(response_raw.data);
+      const response = await axios.post('http://localhost:8000/process_pdf', formData, {
+        responseType: 'blob', // Important: This tells axios to handle the response as a Blob
+      });
+
+      // Create a URL for the blob
+      const fileURL = window.URL.createObjectURL(new Blob([response.data]));
+      
+      // Create a temporary anchor tag and trigger the download
+      const link = document.createElement('a');
+      link.href = fileURL;
+      link.setAttribute('download', 'file.pdf'); // Set the file name for the download
+      document.body.appendChild(link);
+      link.click();
+
+      // Clean up by removing the temporary link
+      if (link.parentNode) {
+        link.parentNode.removeChild(link);
+      }
+
+      // Optional: Update the UI to indicate the file is being downloaded
+      setResponse('Downloading file...');
     } catch (error) {
       console.error(error);
-      
+      setResponse('An error occurred while processing the file.');
     }
   };
 
