@@ -1,53 +1,62 @@
-from api.openai_chat import get_chat_response
-from flask import Flask, request
+import os
+import zipfile
+import tempfile
+from flask import Flask, request, send_file
 from flask_cors import CORS
-
-# if __name__ == "__main__":
-#     prompt = "Hello!"
-#     instructions = "You are a helpful bot"
-#     test_response = get_chat_response(prompt, instructions)
-#     print(test_response)
+from api.openai_chat import get_chat_response
+from utils.modify_document import censor, highlight, extract_text_from_pdf
+from time import sleep
 
 app = Flask(__name__)
 CORS(app)
-# Jag vill endast ha all information som behövs för att avgöra patientens reaktion till apelsiner. 
-BASE_PROMPT = """
-Uppgift: Text Masker är ett verktyg för att dölja viss information i textdokument. Verktyget fokuserar på att arbeta med vetenskapliga artiklar och medicinska journaler. Din uppgift är att dölja delar av texten som inte är relevanta enligt specifika instruktioner, men att behålla resten av texten oförändrad.
 
-Hur det fungerar: När du identifierar ett stycke text som ska döljas, lägg till en <mask>-tagg i början av det stycket och en </mask>-tagg i slutet. Verktyget ändrar inte den övriga texten utan lägger bara till dessa taggar.
-
-Vad du behöver veta:
-
-    Du måste vara noggrann och respektera komplexiteten i dokumenten du arbetar med.
-    Det är viktigt att hantera medicinsk information försiktigt.
-    Du kommer bara att returnera den modifierade texten, där viss information är dold med <mask>-taggar.
-
-Instruktioner från användaren: Användaren kommer att ge dig specifika instruktioner om vilken information som är relevant och ska behållas synlig. Din uppgift är att följa dessa instruktioner och dölja all annan information.
-
-Om det är oklart: Om det inte är tydligt vilken information som ska döljas, bör du följa användarens instruktioner. Om det fortfarande är oklart kan du behöva fråga om ytterligare förtydliganden för att undvika att dölja viktig information.
-
-Exempel:
-
-    Originaltext: Test Testsson har en historia av hjärtsjukdomar och diabetes. Han har också en historia av depression och ångest. Han har tagit medicinen Xanax i 5 år.
-    Fråga: Har Test Testsson haft diabetes?
-    Modifierad text: Test Testsson har en historia av <mask>hjärtsjukdomar</mask> och diabetes. <mask>Han har också en historia av depression och ångest. Han har tagit medicinen Xanax i 5 år.</mask>
-
-Vad du ska göra: Använd användarens instruktioner för att avgöra vilken information som ska förbli synlig och vilken som ska döljas med <mask>-taggar.
-
-Användarens instruktioner är: 
-"""
-@app.route("/upload", methods=["POST"])
-def upload_file():
+@app.route("/process_pdf", methods=["POST"])
+def process_pdf():
+    print("Request received")
+    prompt = request.form.get("textPrompt")
     file = request.files["file"]
-    text_prompt = request.form.get('textPrompt')
     if file:
-        text = file.read().decode('utf-8')
-        instructions = BASE_PROMPT+text_prompt
-        processed_text = get_chat_response(file_text=text, prompt=instructions)
-        print(processed_text)
-    return processed_text
+        # Define file paths
+        input_pdf_path = os.path.join("server", "input.pdf")
+        censored_pdf_path = os.path.join("server", "censored_output.pdf")
+        highlighted_pdf_path = os.path.join("server", "highlighted_output.pdf")
 
-if __name__ == '__main__':
-    port = "8000"
-    print("Starting server at port {port}".format(port=port))
-    app.run(host='0.0.0.0', port=port, debug=True)
+        # Temporarily save the uploaded file
+        file.save(input_pdf_path)
+
+        # Extract text from PDF and get the chat response
+        file_text = extract_text_from_pdf(input_pdf_path)
+        print("Getting chat response...")
+        text_to_preserve = get_chat_response(file_text, prompt)
+        print("Chat response received:", text_to_preserve)
+
+        # Perform censor and highlight operations
+        censor(input_pdf_path, censored_pdf_path, text_to_preserve)
+        highlight(input_pdf_path, highlighted_pdf_path, text_to_preserve)
+
+        # Create a temporary zip file
+        print("Zipping files...")
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".zip") as tmp:
+            with zipfile.ZipFile(tmp.name, 'w') as myzip:
+                myzip.write(censored_pdf_path, arcname=os.path.basename(censored_pdf_path))
+                myzip.write(highlighted_pdf_path, arcname=os.path.basename(highlighted_pdf_path))
+            # Send the zip file
+            print("Sending zip file...")
+            response = send_file(tmp.name, as_attachment=True, download_name='processed_files.zip')
+
+        # Clean up: delete the temporary files
+        print("Deleting temporary files...")
+
+        sleep(5)
+
+        os.remove(input_pdf_path)
+        os.remove(censored_pdf_path)
+        os.remove(highlighted_pdf_path)
+        return response
+
+    return "No file provided", 400
+
+if __name__ == "__main__":
+    port = int(os.environ.get('PORT', 8000))
+    print(f"Starting server at port {port}")
+    app.run(host="0.0.0.0", port=port, debug=True)

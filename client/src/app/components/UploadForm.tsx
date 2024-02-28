@@ -1,6 +1,9 @@
-"use client";
-import { useState } from 'react';
+"use client"
+import React, { useState } from 'react';
 import axios from 'axios';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
+
 
 const UploadForm: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -8,6 +11,7 @@ const UploadForm: React.FC = () => {
   const [response, setResponse] = useState<string>("");
 
   const fileSelectedHandler = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setResponse("");
     if (event.target.files) {
       setSelectedFile(event.target.files[0]);
     }
@@ -18,34 +22,28 @@ const UploadForm: React.FC = () => {
   };
 
   const fileUploadHandler = async () => {
+    setResponse("Processing...")
     const formData = new FormData();
     formData.append('file', selectedFile as Blob);
-    formData.append('textPrompt', textPrompt); // Add the text prompt to the form data
+    formData.append('textPrompt', textPrompt);
     try {
       const response = await axios.post('http://localhost:8000/process_pdf', formData, {
-        responseType: 'blob', // Important: This tells axios to handle the response as a Blob
+        responseType: 'blob',
       });
 
-      // Create a URL for the blob
-      const fileURL = window.URL.createObjectURL(new Blob([response.data]));
-      
-      // Create a temporary anchor tag and trigger the download
-      const link = document.createElement('a');
-      link.href = fileURL;
-      link.setAttribute('download', 'file.pdf'); // Set the file name for the download
-      document.body.appendChild(link);
-      link.click();
-
-      // Clean up by removing the temporary link
-      if (link.parentNode) {
-        link.parentNode.removeChild(link);
-      }
-
-      // Optional: Update the UI to indicate the file is being downloaded
-      setResponse('Downloading file...');
+      // Use JSZip to handle the zip file
+      JSZip.loadAsync(response.data).then((zip) => {
+        Object.keys(zip.files).forEach((filename) => {
+          zip.files[filename].async('blob').then((blob) => {
+            // Use file-saver to save the extracted file
+            saveAs(blob, filename);
+          });
+        });
+        setResponse('Files are ready for download.');
+      });
     } catch (error) {
       console.error(error);
-      setResponse('An error occurred while processing the file.');
+      setResponse('An error occurred while processing the files.');
     }
   };
 
@@ -55,17 +53,16 @@ const UploadForm: React.FC = () => {
         type="file"
         id="file"
         onChange={fileSelectedHandler}
-        className="hidden" // hide the actual input
+        className="hidden"
       />
       <label
         htmlFor="file"
-        className="px-4 py-2 bg-blue-500 text-white cursor-pointer" // style the label as you like
+        className="px-4 py-2 bg-blue-500 text-white cursor-pointer"
       >
         Select File
       </label>
       {selectedFile && <p className="mt-2">Selected file: {selectedFile.name}</p>}
 
-      {/* Text Prompt Input */}
       <input
         type="text"
         value={textPrompt}
