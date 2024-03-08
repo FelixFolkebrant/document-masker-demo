@@ -1,14 +1,16 @@
 import os
-import zipfile
 import tempfile
+import zipfile
+from time import sleep
+
+from api.openai_chat import get_chat_response
 from flask import Flask, request, send_file
 from flask_cors import CORS
-from api.openai_chat import get_chat_response
-from utils.modify_document import censor, highlight, extract_text_from_pdf
-from time import sleep
+from utils.modify_document import censor, extract_text_from_pdf, highlight
 
 app = Flask(__name__)
 CORS(app)
+
 
 @app.route("/process_pdf", methods=["POST"])
 def process_pdf():
@@ -37,12 +39,18 @@ def process_pdf():
         # Create a temporary zip file
         print("Zipping files...")
         with tempfile.NamedTemporaryFile(delete=False, suffix=".zip") as tmp:
-            with zipfile.ZipFile(tmp.name, 'w') as myzip:
-                myzip.write(censored_pdf_path, arcname=os.path.basename(censored_pdf_path))
-                myzip.write(highlighted_pdf_path, arcname=os.path.basename(highlighted_pdf_path))
+            with zipfile.ZipFile(tmp.name, "w") as myzip:
+                myzip.write(
+                    censored_pdf_path, arcname=os.path.basename(censored_pdf_path)
+                )
+                myzip.write(
+                    highlighted_pdf_path, arcname=os.path.basename(highlighted_pdf_path)
+                )
             # Send the zip file
             print("Sending zip file...")
-            response = send_file(tmp.name, as_attachment=True, download_name='processed_files.zip')
+            response = send_file(
+                tmp.name, as_attachment=True, download_name="processed_files.zip"
+            )
 
         # Clean up: delete the temporary files
         print("Deleting temporary files...")
@@ -56,7 +64,8 @@ def process_pdf():
 
     return "No file provided", 400
 
+
 if __name__ == "__main__":
-    port = int(os.environ.get('PORT', 8000))
+    port = int(os.environ.get("PORT", 8000))
     print(f"Starting server at port {port}")
     app.run(host="0.0.0.0", port=port, debug=True)
