@@ -14,20 +14,23 @@ censurera orelaterad information, som detaljer om en förkylning, om den inte sp
 ska den också inkludera relevant kontextinformation såsom kategori av överkänslighet och diagnoserande personal, när sådan information är tillgänglig 
 och relevant för förfrågan. Doc Analyst kan också hantera uteslutningsuppmaningar, som att hämta all information utom specificerade ämnen från ett givet år,
  och säkerställa att den ursprungliga texten bevaras exakt som den är i svaret.
+Eftersom du aldrig ska modifiera den ursprungliga texten, ska du inte ändra något grammatiskt såsom bindestreck (exempel stru-ktur ska fortfarande vara stru-ktur)
 """
 API_KEY = os.getenv("OPENAI_API_KEY")
 client = OpenAI(organization="org-sXMg36FtwtvWOC71TH6ida3r", api_key=API_KEY)
+
 
 def get_chat_response(file_text: str, prompt: str) -> str:
     completion = client.chat.completions.create(
         model="gpt-4-turbo-preview",
         messages=[
             {"role": "system", "content": BASE_PROMPT},
-            {"role": "user", "content": file_text+"\nfråga: "+prompt},
+            {"role": "user", "content": file_text + "\nfråga: " + prompt},
         ],
     )
     response = completion.choices[0].message.content
     return find_python_lists(response)
+
 
 def find_python_lists(text):
     pattern = r'\[(?:[^\[\]]*|"(?:\\.|[^"\\])*")*\]'
@@ -35,4 +38,3 @@ def find_python_lists(text):
     if match:
         return ast.literal_eval(match.group(0))  # Returns the matched list as a string
     return None
-

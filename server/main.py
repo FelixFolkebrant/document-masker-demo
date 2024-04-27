@@ -12,6 +12,13 @@ app = Flask(__name__)
 CORS(app)
 
 
+def translate_nordic_characters(text: str):
+    text = text.replace("ö", "¨o")
+    text = text.replace("ä", "¨a")
+    text = text.replace("å", "˚a")
+    return text
+
+
 @app.route("/process_pdf", methods=["POST"])
 def process_pdf():
     print("Request received")
@@ -28,8 +35,17 @@ def process_pdf():
 
         # Extract text from PDF and get the chat response
         file_text = extract_text_from_pdf(input_pdf_path)
+        print(file_text)
+
         print("Getting chat response...")
         text_to_preserve = get_chat_response(file_text, prompt)
+        if not text_to_preserve:
+            return "No text to censor", 400
+        print(text_to_preserve)
+        text_to_preserve = [
+            translate_nordic_characters(text) for text in text_to_preserve
+        ]
+        print(text_to_preserve)
         print("Chat response received:", text_to_preserve)
 
         # Perform censor and highlight operations

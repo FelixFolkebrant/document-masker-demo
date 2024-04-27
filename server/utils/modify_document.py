@@ -1,5 +1,6 @@
 import fitz  # PyMuPDF
 
+
 def censor(input_pdf_path, output_pdf_path, texts_to_preserve):
     # Open the PDF
     doc = fitz.open(input_pdf_path)
@@ -37,6 +38,7 @@ def censor(input_pdf_path, output_pdf_path, texts_to_preserve):
     doc.save(output_pdf_path)
     doc.close()
 
+
 def highlight(input_pdf_path, output_pdf_path, texts_to_highlight):
     # Open the PDF
     doc = fitz.open(input_pdf_path)
@@ -50,15 +52,18 @@ def highlight(input_pdf_path, output_pdf_path, texts_to_highlight):
             # Highlight each instance found
             for inst in text_instances:
                 highlight = page.add_highlight_annot(inst)
-                highlight.set_colors(stroke=(1, 1, 0))  # Set the highlight color to yellow
+                highlight.set_colors(
+                    stroke=(1, 1, 0)
+                )  # Set the highlight color to yellow
                 highlight.update()
 
     # Save the modified document
     doc.save(output_pdf_path)
     doc.close()
 
+
 def extract_text_from_pdf(pdf_path):
-    text_content = ''  # Initialize an empty string to hold all the text
+    text_content = ""  # Initialize an empty string to hold all the text
     with fitz.open(pdf_path) as doc:  # Open the PDF
         for page in doc:  # Iterate through each page
             text_content += page.get_text()  # Extract text and concatenate
